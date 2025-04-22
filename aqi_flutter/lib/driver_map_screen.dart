@@ -1,0 +1,440 @@
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'drawer_menu.dart';
+
+class DriverMapScreen extends StatefulWidget {
+  @override
+  _DriverMapScreenState createState() => _DriverMapScreenState();
+}
+
+class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProviderStateMixin {
+  late GoogleMapController mapController;
+  LatLng _currentLocation = LatLng(0, 0);
+  Set<Marker> _markers = {};
+  bool _driverCalled = false;
+  Map<String, dynamic>? _nearestDriver;
+  late AnimationController _animationController;
+  late Animation<double> _slideAnimation;
+  bool _isLoading = false;
+
+  List<Map<String, dynamic>> drivers = [
+    {'name': 'Бат-Эрдэнэ', 'lat': 47.921, 'lng': 106.920, 'rating': 4.8, 'car': 'Toyota Prius'},
+    {'name': 'Цэцэг', 'lat': 47.926, 'lng': 106.918, 'rating': 4.9, 'car': 'Toyota Prius'},
+    {'name': 'Ганаа', 'lat': 47.918, 'lng': 106.925, 'rating': 4.7, 'car': 'Toyota Prius'},
+  ];
+
+  // List to store all called drivers
+  List<Map<String, dynamic>> _calledDrivers = [];
+
+  BitmapDescriptor? _driverIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    );
+    _slideAnimation = Tween<double>(begin: 200, end: 0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _fetchLocation();
+    _loadCustomIcon();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCustomIcon() async {
+    // Load the custom icon from assets
+    _driverIcon = await BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(size: Size(48, 48)), 
+      'assets/driver_icon.png', // Path to your custom icon
+    );
+  }
+
+  Future<void> _fetchLocation() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showErrorDialog('Location services are disabled. Please enable them.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission != LocationPermission.whileInUse &&
+            permission != LocationPermission.always) {
+          _showErrorDialog('Location permissions are required to use this app.');
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+
+      _findNearestDriver(position);
+      _updateMarkers();
+      
+      mapController.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentLocation, 15),
+      );
+    } catch (e) {
+      _showErrorDialog('Error getting location: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Алдаа'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _updateMarkers() {
+    _markers.clear();
+    
+    // Add current location marker
+    _markers.add(Marker(
+      markerId: MarkerId("me"),
+      position: _currentLocation,
+      infoWindow: InfoWindow(title: "Таны байршил"),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+    ));
+
+    // Add driver markers
+    if (_driverIcon != null) {
+      for (var driver in drivers) {
+        _markers.add(Marker(
+          markerId: MarkerId(driver['name']),
+          position: LatLng(driver['lat'], driver['lng']),
+          infoWindow: InfoWindow(
+            title: driver['name'],
+            snippet: '${driver['car']} - ${driver['rating']} ★',
+          ),
+          icon: _driverIcon!,
+        ));
+      }
+    }
+  }
+
+  void _findNearestDriver(Position position) {
+    double minDistance = double.infinity;
+    Map<String, dynamic>? closest;
+
+    for (var driver in drivers) {
+      double distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        driver['lat'],
+        driver['lng'],
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = driver;
+        closest!['distance'] = distance;
+      }
+    }
+
+    setState(() {
+      _nearestDriver = closest;
+    });
+  }
+
+  void _callDriver() {
+    if (_nearestDriver != null) {
+      setState(() {
+        _driverCalled = true;
+        _calledDrivers.add(_nearestDriver!);
+      });
+      _animationController.forward();
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text("Жолооч дуудагдав"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("${_nearestDriver?['name']} жолооч таны дуудлагад ирж байна."),
+              SizedBox(height: 8),
+              Text("Машин: ${_nearestDriver?['car']}"),
+              Text("Үнэлгээ: ${_nearestDriver?['rating']} ★"),
+              Text("Зай: ${(_nearestDriver!['distance'] / 1000).toStringAsFixed(2)} км"),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showRatingDialog();
+              },
+              child: Text("Цуцлах"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("OK"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showRatingDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Шалтгаан"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Яагаад цуцлах вэ?"),
+            SizedBox(height: 16),
+            ListTile(
+              leading: Icon(Icons.timer),
+              title: Text("Хэт удаан"),
+              onTap: () {
+                Navigator.pop(context);
+                _cancelDriverCall("Хэт удаан");
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.money),
+              title: Text("Үнэ өндөр"),
+              onTap: () {
+                Navigator.pop(context);
+                _cancelDriverCall("Үнэ өндөр");
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.directions_car),
+              title: Text("Машин тохирохгүй"),
+              onTap: () {
+                Navigator.pop(context);
+                _cancelDriverCall("Машин тохирохгүй");
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.person),
+              title: Text("Жолооч тохирохгүй"),
+              onTap: () {
+                Navigator.pop(context);
+                _cancelDriverCall("Жолооч тохирохгүй");
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.more_horiz),
+              title: Text("Бусад шалтгаан"),
+              onTap: () {
+                Navigator.pop(context);
+                _cancelDriverCall("Бусад шалтгаан");
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _cancelDriverCall(String reason) {
+    setState(() {
+      _driverCalled = false;
+      _calledDrivers.remove(_nearestDriver);
+    });
+    _animationController.reverse();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Дуудлага цуцлагдлаа"),
+        content: Text("Шалтгаан: $reason"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDriverCard() {
+    if (_nearestDriver == null || !_driverCalled) return SizedBox.shrink();
+
+    return AnimatedBuilder(
+      animation: _slideAnimation,
+      builder: (context, child) {
+        return Positioned(
+          bottom: _slideAnimation.value,
+          left: 16,
+          right: 16,
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        child: Text(
+                          _nearestDriver!['name'][0],
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _nearestDriver!['name'],
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              _nearestDriver!['car'],
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: Colors.amber, size: 20),
+                          Text(
+                            _nearestDriver!['rating'].toString(),
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Зай: ${(_nearestDriver!['distance'] / 1000).toStringAsFixed(2)} км",
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            "Ирж байна",
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.cancel, color: Colors.red),
+                            onPressed: () {
+                              _showRatingDialog();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      drawer: AppDrawer(
+        phoneNumber: '96132113',
+        code: '25PDGR',
+      ),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: Text('Жолооч дуудах'),
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _currentLocation,
+              zoom: 15,
+            ),
+            onMapCreated: (controller) => mapController = controller,
+            markers: _markers,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
+          ),
+          if (_isLoading)
+            Center(
+              child: CircularProgressIndicator(),
+            ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: Column(
+              children: [
+                FloatingActionButton(
+                  heroTag: 'locate',
+                  onPressed: _fetchLocation,
+                  child: Icon(Icons.my_location),
+                  backgroundColor: Colors.blue,
+                ),
+                SizedBox(height: 12),
+                FloatingActionButton(
+                  heroTag: 'call',
+                  onPressed: _driverCalled ? null : _callDriver,
+                  child: Icon(Icons.directions_car),
+                  backgroundColor: _driverCalled ? Colors.grey : Colors.green,
+                ),
+              ],
+            ),
+          ),
+          _buildDriverCard(),
+        ],
+      ),
+    );
+  }
+}
