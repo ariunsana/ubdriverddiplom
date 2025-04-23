@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'drawer_menu.dart';
+import 'driver_list_screen.dart';
 
 class DriverMapScreen extends StatefulWidget {
+  final Map<String, dynamic>? initialDriver;
+
+  const DriverMapScreen({
+    Key? key,
+    this.initialDriver,
+  }) : super(key: key);
+
   @override
   _DriverMapScreenState createState() => _DriverMapScreenState();
 }
@@ -41,6 +49,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     );
     _fetchLocation();
     _loadCustomIcon();
+
+    // If initial driver is provided, set them as the nearest driver
+    if (widget.initialDriver != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _nearestDriver = widget.initialDriver;
+          _driverCalled = true;
+          _calledDrivers.add(_nearestDriver!);
+        });
+        _animationController.forward();
+        _callDriver();
+      });
+    }
   }
 
   @override
@@ -376,6 +397,30 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     );
   }
 
+  void _showDriverList() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DriverListScreen(
+          drivers: drivers,
+          currentLocation: _currentLocation,
+          onDriverSelected: (driver) {
+            setState(() {
+              _nearestDriver = driver;
+              _nearestDriver!['distance'] = Geolocator.distanceBetween(
+                _currentLocation.latitude,
+                _currentLocation.longitude,
+                driver['lat'],
+                driver['lng'],
+              );
+            });
+            _callDriver();
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -392,6 +437,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
         ),
         title: Text('Жолооч дуудах'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.list),
+            onPressed: _showDriverList,
+            tooltip: 'Жолооч нарын жагсаалт',
+          ),
+        ],
       ),
       body: Stack(
         children: [
