@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
+import 'screens/profile_edit_screen.dart';
 
 class AppDrawer extends StatelessWidget {
-  final String phoneNumber;
-  final String code;
+  final Map<String, dynamic> userData;
 
   const AppDrawer({
     Key? key,
-    required this.phoneNumber,
-    required this.code,
+    required this.userData,
   }) : super(key: key);
 
   @override
@@ -29,7 +28,7 @@ class AppDrawer extends StatelessWidget {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  phoneNumber,
+                  userData['full_name'] ?? 'Нэргүй',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -37,20 +36,30 @@ class AppDrawer extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 8),
+                Text(
+                  userData['phone_number'] ?? 'Утасны дугааргүй',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  userData['email'] ?? 'И-мэйлгүй',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 8),
                 Row(
                   children: [
                     Text(
-                      'КОД : $code',
+                      'Машин: ${userData['car_model'] ?? 'Марк'} - ${userData['car_plate'] ?? 'Дугаар'}',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      Icons.copy,
-                      color: Colors.orange,
-                      size: 20,
                     ),
                   ],
                 ),
@@ -61,6 +70,22 @@ class AppDrawer extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                _buildMenuItem(
+                  icon: Icons.edit,
+                  title: 'Профайл засах',
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfileEditScreen(userData: userData),
+                      ),
+                    );
+                    if (result == true) {
+                      // Refresh the drawer if profile was updated
+                      Navigator.pop(context, true);
+                    }
+                  },
+                ),
                 _buildMenuItem(
                   icon: Icons.location_on_outlined,
                   title: 'Миний аяллууд',

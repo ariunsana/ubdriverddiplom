@@ -5,11 +5,13 @@ import 'drawer_menu.dart';
 import 'driver_list_screen.dart';
 
 class DriverMapScreen extends StatefulWidget {
-  final Map<String, dynamic>? initialDriver;
+  final Map<String, dynamic> userData;
+  final Map<String, dynamic>? selectedDriver;
 
   const DriverMapScreen({
     Key? key,
-    this.initialDriver,
+    required this.userData,
+    this.selectedDriver,
   }) : super(key: key);
 
   @override
@@ -50,11 +52,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     _fetchLocation();
     _loadCustomIcon();
 
-    // If initial driver is provided, set them as the nearest driver
-    if (widget.initialDriver != null) {
+    // If selected driver is provided, set them as the nearest driver
+    if (widget.selectedDriver != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
-          _nearestDriver = widget.initialDriver;
+          _nearestDriver = widget.selectedDriver;
           _driverCalled = true;
           _calledDrivers.add(_nearestDriver!);
         });
@@ -416,6 +418,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
             });
             _callDriver();
           },
+          userData: widget.userData,
         ),
       ),
     );
@@ -424,10 +427,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: AppDrawer(
-        phoneNumber: '96132113',
-        code: '25PDGR',
-      ),
+      drawer: AppDrawer(userData: widget.userData),
       appBar: AppBar(
         leading: Builder(
           builder: (context) => IconButton(
