@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
+import 'driver_map_screen.dart';
+import 'services/auth_state_service.dart';
 
 void main() {
   runApp(MyApp());
@@ -38,7 +40,41 @@ class MyApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
+      home: FutureBuilder(
+        future: AuthStateService.isLoggedIn(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          
+          if (snapshot.data == true) {
+            return FutureBuilder(
+              future: AuthStateService.getUserData(),
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                
+                if (userSnapshot.hasData && userSnapshot.data != null) {
+                  return DriverMapScreen(userData: userSnapshot.data!);
+                }
+                
+                return LoginScreen();
+              },
+            );
+          }
+          
+          return LoginScreen();
+        },
+      ),
     );
   }
 }

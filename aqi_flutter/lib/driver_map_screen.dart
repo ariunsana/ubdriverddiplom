@@ -404,7 +404,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
       context,
       MaterialPageRoute(
         builder: (context) => DriverListScreen(
-          drivers: drivers,
           currentLocation: _currentLocation,
           onDriverSelected: (driver) {
             setState(() {

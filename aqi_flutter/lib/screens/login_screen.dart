@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../driver_map_screen.dart';
 import 'register_screen.dart';
 import '../services/auth_service.dart';
+import '../services/auth_state_service.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -96,14 +97,17 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (response['success']) {
-          // Store user data if needed
-          Navigator.pushReplacement(
+          // Save user data
+          await AuthStateService.saveUserData(response['user']);
+          
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
               builder: (_) => DriverMapScreen(
                 userData: response['user'],
               ),
             ),
+            (route) => false,
           );
         }
       } catch (e) {

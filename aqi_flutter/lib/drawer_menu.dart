@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/profile_edit_screen.dart';
+import 'screens/login_screen.dart';
+import '../services/auth_state_service.dart';
 
 class AppDrawer extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -113,9 +115,16 @@ class AppDrawer extends StatelessWidget {
                 ),
                 Divider(),
                 _buildMenuItem(
-                  icon: Icons.more_horiz,
-                  title: 'Бусад',
-                  onTap: () {},
+                  icon: Icons.logout,
+                  title: 'Гарах',
+                  onTap: () async {
+                    await AuthStateService.clearUserData();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => LoginScreen()),
+                      (route) => false,
+                    );
+                  },
                 ),
               ],
             ),
