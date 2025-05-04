@@ -20,13 +20,14 @@ class DriverMapScreen extends StatefulWidget {
 
 class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProviderStateMixin {
   late GoogleMapController mapController;
-  LatLng _currentLocation = LatLng(0, 0);
+  LatLng _currentLocation = LatLng(47.921, 106.920); // Default to Ulaanbaatar coordinates
   Set<Marker> _markers = {};
   bool _driverCalled = false;
   Map<String, dynamic>? _nearestDriver;
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   bool _isLoading = false;
+  bool _mapError = false;
 
   List<Map<String, dynamic>> drivers = [
     {'name': 'Бат-Эрдэнэ', 'lat': 47.921, 'lng': 106.920, 'rating': 4.8, 'car': 'Toyota Prius'},
@@ -73,15 +74,22 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
   }
 
   Future<void> _loadCustomIcon() async {
-    // Load the custom icon from assets
-    _driverIcon = await BitmapDescriptor.fromAssetImage(
-      ImageConfiguration(size: Size(48, 48)), 
-      'assets/driver_icon.png', // Path to your custom icon
-    );
+    try {
+      _driverIcon = await BitmapDescriptor.fromAssetImage(
+        ImageConfiguration(size: Size(48, 48)), 
+        'assets/driver_icon.png',
+      );
+    } catch (e) {
+      print('Error loading custom icon: $e');
+      _driverIcon = BitmapDescriptor.defaultMarker;
+    }
   }
 
   Future<void> _fetchLocation() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _mapError = false;
+    });
     
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -110,10 +118,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
       _findNearestDriver(position);
       _updateMarkers();
       
-      mapController.animateCamera(
-        CameraUpdate.newLatLngZoom(_currentLocation, 15),
-      );
+      if (mapController != null) {
+        mapController.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentLocation, 15),
+        );
+      }
     } catch (e) {
+      setState(() {
+        _mapError = true;
+      });
       _showErrorDialog('Error getting location: ${e.toString()}');
     } finally {
       setState(() => _isLoading = false);
@@ -148,18 +161,16 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     ));
 
     // Add driver markers
-    if (_driverIcon != null) {
-      for (var driver in drivers) {
-        _markers.add(Marker(
-          markerId: MarkerId(driver['name']),
-          position: LatLng(driver['lat'], driver['lng']),
-          infoWindow: InfoWindow(
-            title: driver['name'],
-            snippet: '${driver['car']} - ${driver['rating']} ★',
-          ),
-          icon: _driverIcon!,
-        ));
-      }
+    for (var driver in drivers) {
+      _markers.add(Marker(
+        markerId: MarkerId(driver['name']),
+        position: LatLng(driver['lat'], driver['lng']),
+        infoWindow: InfoWindow(
+          title: driver['name'],
+          snippet: '${driver['car']} - ${driver['rating']} ★',
+        ),
+        icon: _driverIcon ?? BitmapDescriptor.defaultMarker,
+      ));
     }
   }
 
@@ -184,6 +195,30 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     setState(() {
       _nearestDriver = closest;
     });
+  }
+
+  void _showDriverList() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DriverListScreen(
+          currentLocation: _currentLocation,
+          onDriverSelected: (driver) {
+            setState(() {
+              _nearestDriver = driver;
+              _nearestDriver!['distance'] = Geolocator.distanceBetween(
+                _currentLocation.latitude,
+                _currentLocation.longitude,
+                driver['lat'],
+                driver['lng'],
+              );
+            });
+            _callDriver();
+          },
+          userData: widget.userData,
+        ),
+      ),
+    );
   }
 
   void _callDriver() {
@@ -399,30 +434,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     );
   }
 
-  void _showDriverList() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DriverListScreen(
-          currentLocation: _currentLocation,
-          onDriverSelected: (driver) {
-            setState(() {
-              _nearestDriver = driver;
-              _nearestDriver!['distance'] = Geolocator.distanceBetween(
-                _currentLocation.latitude,
-                _currentLocation.longitude,
-                driver['lat'],
-                driver['lng'],
-              );
-            });
-            _callDriver();
-          },
-          userData: widget.userData,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -446,18 +457,35 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
       ),
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _currentLocation,
-              zoom: 15,
+          if (_mapError)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  SizedBox(height: 16),
+                  Text('Газрын зураг ачаалахад алдаа гарлаа'),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _fetchLocation,
+                    child: Text('Дахин оролдох'),
+                  ),
+                ],
+              ),
+            )
+          else
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _currentLocation,
+                zoom: 15,
+              ),
+              onMapCreated: (controller) => mapController = controller,
+              markers: _markers,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
             ),
-            onMapCreated: (controller) => mapController = controller,
-            markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-          ),
           if (_isLoading)
             Center(
               child: CircularProgressIndicator(),
