@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math' as math;
 import 'driver_map_screen.dart';
-import 'services/driver_service.dart';
+import 'services/driver_data_service.dart';
 
 class DriverListScreen extends StatefulWidget {
   final LatLng currentLocation;
@@ -25,7 +25,6 @@ class _DriverListScreenState extends State<DriverListScreen> {
   List<Map<String, dynamic>> _driversWithDistance = [];
   bool _isLoading = true;
   String? _errorMessage;
-  final DriverService _driverService = DriverService();
   int _selectedZoneIndex = 0;
 
   final List<Map<String, dynamic>> zones = [
@@ -151,20 +150,18 @@ class _DriverListScreenState extends State<DriverListScreen> {
 
   Future<void> _loadDrivers() async {
     try {
-      final drivers = await _driverService.getDrivers();
       setState(() {
-        _driversWithDistance = drivers.map((driver) {
-          final distance = Geolocator.distanceBetween(
-            widget.currentLocation.latitude,
-            widget.currentLocation.longitude,
-            driver['lat'] ?? 0.0,
-            driver['lng'] ?? 0.0,
-          );
-          
-          final driverWithDistance = Map<String, dynamic>.from(driver);
-          driverWithDistance['distance'] = distance;
-          return driverWithDistance;
-        }).toList();
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      
+      final drivers = await DriverDataService.getDriversWithDistance(
+        widget.currentLocation.latitude,
+        widget.currentLocation.longitude,
+      );
+      
+      setState(() {
+        _driversWithDistance = drivers;
         _isLoading = false;
       });
     } catch (e) {

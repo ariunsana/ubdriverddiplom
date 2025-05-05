@@ -32,6 +32,8 @@ class Driver(models.Model):
     license_number = models.CharField(max_length=50)
     profile_photo = models.ImageField(upload_to='drivers/', null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)  # Optional location
+    latitude = models.FloatField(null=True, blank=True)  # Add latitude field
+    longitude = models.FloatField(null=True, blank=True)  # Add longitude field
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

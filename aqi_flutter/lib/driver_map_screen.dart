@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'drawer_menu.dart';
 import 'driver_list_screen.dart';
+import 'services/driver_data_service.dart';
 
 class DriverMapScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -28,17 +29,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
   late Animation<double> _slideAnimation;
   bool _isLoading = false;
   bool _mapError = false;
-
-  List<Map<String, dynamic>> drivers = [
-    {'name': 'Бат-Эрдэнэ', 'lat': 47.921, 'lng': 106.920, 'rating': 4.8, 'car': 'Toyota Prius'},
-    {'name': 'Цэцэг', 'lat': 47.926, 'lng': 106.918, 'rating': 4.9, 'car': 'Toyota Prius'},
-    {'name': 'Ганаа', 'lat': 47.918, 'lng': 106.925, 'rating': 4.7, 'car': 'Toyota Prius'},
-  ];
-
-  // List to store all called drivers
   List<Map<String, dynamic>> _calledDrivers = [];
-
   BitmapDescriptor? _driverIcon;
+  List<Map<String, dynamic>> _drivers = [];
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -52,6 +46,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     );
     _fetchLocation();
     _loadCustomIcon();
+    _loadDrivers();
 
     // If selected driver is provided, set them as the nearest driver
     if (widget.selectedDriver != null) {
@@ -115,8 +110,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
         _currentLocation = LatLng(position.latitude, position.longitude);
       });
 
-      _findNearestDriver(position);
-      _updateMarkers();
+      await _findNearestDriver(position);
+      await _updateMarkers();
       
       if (mapController != null) {
         mapController.animateCamera(
@@ -149,7 +144,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     );
   }
 
-  void _updateMarkers() {
+  Future<void> _updateMarkers() async {
     _markers.clear();
     
     // Add current location marker
@@ -161,36 +156,33 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     ));
 
     // Add driver markers
+    final drivers = await DriverDataService.getDrivers();
     for (var driver in drivers) {
-      _markers.add(Marker(
-        markerId: MarkerId(driver['name']),
-        position: LatLng(driver['lat'], driver['lng']),
-        infoWindow: InfoWindow(
-          title: driver['name'],
-          snippet: '${driver['car']} - ${driver['rating']} ★',
-        ),
-        icon: _driverIcon ?? BitmapDescriptor.defaultMarker,
-      ));
+      if (driver['lat'] != null && driver['lng'] != null) {
+        _markers.add(Marker(
+          markerId: MarkerId(driver['license_number']),
+          position: LatLng(driver['lat'], driver['lng']),
+          infoWindow: InfoWindow(
+            title: '${driver['first_name']} ${driver['last_name']}',
+            snippet: '${driver['car']} - ${driver['rating']} ★',
+          ),
+          icon: _driverIcon ?? BitmapDescriptor.defaultMarker,
+        ));
+      }
     }
   }
 
-  void _findNearestDriver(Position position) {
-    double minDistance = double.infinity;
-    Map<String, dynamic>? closest;
+  Future<void> _findNearestDriver(Position position) async {
+    final drivers = await DriverDataService.getDriversWithDistance(
+      position.latitude,
+      position.longitude,
+    );
+    
+    if (drivers.isEmpty) return;
 
-    for (var driver in drivers) {
-      double distance = Geolocator.distanceBetween(
-        position.latitude,
-        position.longitude,
-        driver['lat'],
-        driver['lng'],
-      );
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = driver;
-        closest!['distance'] = distance;
-      }
-    }
+    final closest = drivers.reduce((a, b) => 
+      a['distance'] < b['distance'] ? a : b
+    );
 
     setState(() {
       _nearestDriver = closest;
@@ -221,44 +213,51 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
     );
   }
 
-  void _callDriver() {
+  Future<void> _callDriver() async {
     if (_nearestDriver != null) {
-      setState(() {
-        _driverCalled = true;
-        _calledDrivers.add(_nearestDriver!);
-      });
-      _animationController.forward();
+      try {
+        setState(() {
+          _driverCalled = true;
+          _calledDrivers.add(_nearestDriver!);
+        });
+        _animationController.forward();
 
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text("Жолооч дуудагдав"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("${_nearestDriver?['name']} жолооч таны дуудлагад ирж байна."),
-              SizedBox(height: 8),
-              Text("Машин: ${_nearestDriver?['car']}"),
-              Text("Үнэлгээ: ${_nearestDriver?['rating']} ★"),
-              Text("Зай: ${(_nearestDriver!['distance'] / 1000).toStringAsFixed(2)} км"),
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text("Жолооч дуудагдав"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("${_nearestDriver?['first_name']} ${_nearestDriver?['last_name']} жолооч таны дуудлагад ирж байна."),
+                SizedBox(height: 8),
+                Text("Машин: ${_nearestDriver?['car']}"),
+                Text("Үнэлгээ: ${_nearestDriver?['rating']} ★"),
+                Text("Зай: ${(_nearestDriver!['distance'] / 1000).toStringAsFixed(2)} км"),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showRatingDialog();
+                },
+                child: Text("Цуцлах"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("OK"),
+              ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showRatingDialog();
-              },
-              child: Text("Цуцлах"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK"),
-            ),
-          ],
-        ),
-      );
+        );
+      } catch (e) {
+        print('Error calling driver: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Жолооч дуудахад алдаа гарлаа')),
+        );
+      }
     }
   }
 
@@ -363,7 +362,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
                       CircleAvatar(
                         backgroundColor: Theme.of(context).primaryColor,
                         child: Text(
-                          _nearestDriver!['name'][0],
+                          _nearestDriver!['first_name']?[0] ?? '?',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
@@ -373,14 +372,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _nearestDriver!['name'],
+                              '${_nearestDriver!['first_name'] ?? 'Нэргүй'} ${_nearestDriver!['last_name'] ?? ''}',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
-                              _nearestDriver!['car'],
+                              _nearestDriver!['car'] ?? 'Машин тодорхойгүй',
                               style: TextStyle(color: Colors.grey[600]),
                             ),
                           ],
@@ -390,7 +389,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
                         children: [
                           Icon(Icons.star, color: Colors.amber, size: 20),
                           Text(
-                            _nearestDriver!['rating'].toString(),
+                            _nearestDriver!['rating']?.toString() ?? '0.0',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -432,6 +431,27 @@ class _DriverMapScreenState extends State<DriverMapScreen> with SingleTickerProv
         );
       },
     );
+  }
+
+  Future<void> _loadDrivers() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      
+      final drivers = await DriverDataService.getDrivers();
+      
+      setState(() {
+        _drivers = drivers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override

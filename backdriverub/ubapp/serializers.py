@@ -40,7 +40,7 @@ class DriverSerializer(serializers.ModelSerializer):
     class Meta:
         model = Driver
         fields = ['id', 'first_name', 'last_name', 'phone_number', 'license_number', 
-                 'profile_photo', 'location', 'is_verified']
+                 'profile_photo', 'location', 'latitude', 'longitude', 'is_verified']
         read_only_fields = ['id', 'is_verified']
 
 class RideSerializer(serializers.ModelSerializer):
