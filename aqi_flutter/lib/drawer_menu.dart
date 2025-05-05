@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'screens/profile_edit_screen.dart';
 import 'screens/login_screen.dart';
 import '../services/auth_state_service.dart';
+import 'screens/my_trips_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/wallet_screen.dart';
+import 'screens/promotions_screen.dart';
+import 'screens/feedback_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -91,27 +96,52 @@ class AppDrawer extends StatelessWidget {
                 _buildMenuItem(
                   icon: Icons.location_on_outlined,
                   title: 'Миний аяллууд',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MyTripsScreen()),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.settings,
                   title: 'Тохиргоо',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => SettingsScreen()),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.credit_card,
                   title: 'Хэтэвч',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => WalletScreen()),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.access_time,
                   title: 'Урамшуулал',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => PromotionsScreen()),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.flag_outlined,
                   title: 'Санал, гомдол',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => FeedbackScreen()),
+                    );
+                  },
                 ),
                 Divider(),
                 _buildMenuItem(
