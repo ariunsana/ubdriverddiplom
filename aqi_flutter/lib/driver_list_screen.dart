@@ -212,64 +212,103 @@ class _DriverListScreenState extends State<DriverListScreen> {
     final selectedZone = zones[_selectedZoneIndex];
     return Card(
       margin: EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Бүсчлэл ба дуудлагын хөлс',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '${selectedZone['name']} - ${selectedZone['price'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}₮',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            SizedBox(height: 8),
-            _buildStarDiagram(selectedZone['places'] as List<String>),
-            SizedBox(height: 8),
-            // Zone buttons as grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 2.8,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.grey.shade50],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Text(
+                'Бүсчлэл ба дуудлагын хөлс',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-              itemCount: zones.length,
-              itemBuilder: (context, index) {
-                final zone = zones[index];
-                final isSelected = _selectedZoneIndex == index;
-                return OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: isSelected ? Colors.grey.shade200 : Colors.white,
-                    side: BorderSide(
-                      color: isSelected ? Colors.black : Colors.grey.shade400,
-                      width: isSelected ? 2 : 1,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${selectedZone['name']} - ${selectedZone['price'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}₮',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).primaryColor,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _selectedZoneIndex = index;
-                    });
-                  },
-                  child: Text(
-                    '${zone['name']} - ${zone['price'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}₮',
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildStarDiagram(selectedZone['places'] as List<String>),
+              SizedBox(height: 16),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 2.8,
+                ),
+                itemCount: zones.length,
+                itemBuilder: (context, index) {
+                  final zone = zones[index];
+                  final isSelected = _selectedZoneIndex == index;
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: isSelected ? [
+                        BoxShadow(
+                          color: Theme.of(context).primaryColor.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        )
+                      ] : null,
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : Colors.white,
+                        side: BorderSide(
+                          color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade300,
+                          width: isSelected ? 2 : 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _selectedZoneIndex = index;
+                        });
+                      },
+                      child: Text(
+                        '${zone['name']} - ${zone['price'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}₮',
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -279,7 +318,11 @@ class _DriverListScreenState extends State<DriverListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Жолооч нарын жагсаалт'),
+        title: Text(
+          'Жолооч нарын жагсаалт',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        elevation: 0,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -294,18 +337,44 @@ class _DriverListScreenState extends State<DriverListScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(_errorMessage!),
+                      Icon(Icons.error_outline, size: 48, color: Colors.red),
                       SizedBox(height: 16),
-                      ElevatedButton(
+                      Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton.icon(
                         onPressed: _loadDrivers,
-                        child: Text('Дахин оролдох'),
+                        icon: Icon(Icons.refresh),
+                        label: Text('Дахин оролдох'),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 )
               : _driversWithDistance.isEmpty
                   ? Center(
-                      child: Text('Жолооч олдсонгүй'),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.directions_car_outlined, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'Жолооч олдсонгүй',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
                     )
                   : SingleChildScrollView(
                       child: Column(
@@ -318,56 +387,124 @@ class _DriverListScreenState extends State<DriverListScreen> {
                             itemBuilder: (context, index) {
                               final driver = _driversWithDistance[index];
                               
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Theme.of(context).primaryColor,
-                                  child: Text(
-                                    _getInitial(driver['first_name']),
-                                    style: TextStyle(color: Colors.white),
+                              return Card(
+                                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => DriverMapScreen(
+                                          userData: widget.userData,
+                                          selectedDriver: driver,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 28,
+                                          backgroundColor: Theme.of(context).primaryColor,
+                                          child: Text(
+                                            _getInitial(driver['first_name']),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${driver['first_name'] ?? 'Нэргүй'} ${driver['last_name'] ?? ''}',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              if (driver['phone_number'] != null)
+                                                Text(
+                                                  'Утас: ${driver['phone_number']}',
+                                                  style: TextStyle(color: Colors.grey[600]),
+                                                ),
+                                              if (driver['license_number'] != null)
+                                                Text(
+                                                  'Жолоочийн үнэмлэх: ${driver['license_number']}',
+                                                  style: TextStyle(color: Colors.grey[600]),
+                                                ),
+                                              if (driver['location'] != null)
+                                                Text(
+                                                  'Байршил: ${driver['location']}',
+                                                  style: TextStyle(color: Colors.grey[600]),
+                                                ),
+                                              Text(
+                                                'Зай: ${(driver['distance'] / 1000).toStringAsFixed(2)} км',
+                                                style: TextStyle(
+                                                  color: Theme.of(context).primaryColor,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: driver['is_verified'] == true
+                                                    ? Colors.green.withOpacity(0.1)
+                                                    : Colors.orange.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    driver['is_verified'] == true
+                                                        ? Icons.verified
+                                                        : Icons.pending,
+                                                    color: driver['is_verified'] == true
+                                                        ? Colors.green
+                                                        : Colors.orange,
+                                                    size: 16,
+                                                  ),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    driver['is_verified'] == true
+                                                        ? 'Баталгаажсан'
+                                                        : 'Хүлээгдэж буй',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: driver['is_verified'] == true
+                                                          ? Colors.green
+                                                          : Colors.orange,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                title: Text(
-                                  '${driver['first_name'] ?? 'Нэргүй'} ${driver['last_name'] ?? ''}',
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (driver['phone_number'] != null)
-                                      Text('Утас: ${driver['phone_number']}'),
-                                    if (driver['license_number'] != null)
-                                      Text('Жолоочийн үнэмлэх: ${driver['license_number']}'),
-                                    if (driver['location'] != null)
-                                      Text('Байршил: ${driver['location']}'),
-                                    Text('Зай: ${(driver['distance'] / 1000).toStringAsFixed(2)} км'),
-                                  ],
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      driver['is_verified'] == true ? Icons.verified : Icons.pending,
-                                      color: driver['is_verified'] == true ? Colors.green : Colors.orange,
-                                    ),
-                                    Text(
-                                      driver['is_verified'] == true ? 'Баталгаажсан' : 'Хүлээгдэж буй',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: driver['is_verified'] == true ? Colors.green : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => DriverMapScreen(
-                                        userData: widget.userData,
-                                        selectedDriver: driver,
-                                      ),
-                                    ),
-                                  );
-                                },
                               );
                             },
                           ),
